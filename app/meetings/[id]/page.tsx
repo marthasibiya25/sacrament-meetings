@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import MeetingDetail from "@/app/components/MeetingDetail";
 import { Meeting } from "@/lib/types";
@@ -7,11 +8,15 @@ interface MeetingPageProps {
 }
 
 async function getMeeting(id: string): Promise<Meeting | null> {
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const headersList = await headers();
+  const host = headersList.get("host");
 
-  const response = await fetch(`${baseUrl}/api/meetings/${id}`, {
+  if (!host) {
+    throw new Error("Unable to determine application host.");
+  }
+
+  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+  const response = await fetch(`${protocol}://${host}/api/meetings/${id}`, {
     cache: "no-store",
   });
 
