@@ -5,8 +5,10 @@ export async function GET(request: NextRequest) {
     const date = request.nextUrl.searchParams.get("date");
 
     if (date) {
-        return NextResponse.json(getMeetingsByDate(date));
+        const meetings = await getMeetingsByDate(date);
+        return NextResponse.json(meetings);
     }
 
-    return NextResponse.json(getAllMeetings());
+    const meetings = await getAllMeetings();
+    return NextResponse.json(meetings);
 }

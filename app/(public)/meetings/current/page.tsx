@@ -14,8 +14,9 @@ function getMostRecentSunday(date: Date): string {
     return `${year}-${month}-${dayOfMonth}`;
 }
 
-export default function CurrentMeetingPage() {
-    const meetings = getAllMeetings();
+export default async function CurrentMeetingPage() {
+    const meetings = await getAllMeetings();
+
     const today = new Date();
     const mostRecentSunday = getMostRecentSunday(today);
 
@@ -35,6 +36,7 @@ export default function CurrentMeetingPage() {
                 <h1 className="text-2xl font-bold text-slate-900">
                     No meetings available
                 </h1>
+
                 <p className="mt-2 text-slate-600">
                     There are no sacrament meetings available yet.
                 </p>

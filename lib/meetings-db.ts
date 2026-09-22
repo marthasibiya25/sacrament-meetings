@@ -1,200 +1,267 @@
-import { Meeting } from "./types";
+import { neon } from "@neondatabase/serverless";
+import type { Meeting, MeetingType } from "./types";
 
-export const meetings: Meeting[] = [
-    {
-        id: "1",
-        date: "2026-05-03",
-        meetingType: {
-            id: "sacrament",
-            name: "Sacrament Meeting",
-        },
-        openingHymn: {
-            number: 2,
-            title: "The Spirit of God",
-        },
-        openingPrayer: "Brother Daniel Mokoena",
-        speakers: [
-            {
-                name: "Sister Sarah Dlamini",
-                topic: "Faith in Jesus Christ",
-            },
-            {
-                name: "Brother Thabo Maseko",
-                topic: "Following the Savior",
-            },
-        ],
-        intermediateHymn: {
-            number: 85,
-            title: "How Firm a Foundation",
-        },
-        business: [
-            {
-                item: "Sustaining of officers",
-                details: "Members sustained new ward officers.",
-            },
-        ],
-        closingHymn: {
-            number: 219,
-            title: "Because I Have Been Given Much",
-        },
-        closingPrayer: "Sister Ruth Nkosi",
-        presiding: "Bishop David Molefe",
-        conducting: "Brother Samuel Khumalo",
-    },
-    {
-        id: "2",
-        date: "2026-05-10",
-        meetingType: {
-            id: "sacrament",
-            name: "Sacrament Meeting",
-        },
-        openingHymn: {
-            number: 81,
-            title: "Press Forward, Saints",
-        },
-        openingPrayer: "Sister Maria Ndlovu",
-        speakers: [
-            {
-                name: "Brother Joseph Mthembu",
-                topic: "The Book of Mormon",
-            },
-            {
-                name: "Sister Linda Mokoena",
-                topic: "The Power of Prayer",
-            },
-        ],
-        intermediateHymn: {
-            number: 85,
-            title: "How Firm a Foundation",
-        },
-        business: [
-            {
-                item: "Announcements",
-                details: "Ward activities and service opportunities were announced.",
-            },
-        ],
-        closingHymn: {
-            number: 152,
-            title: "God Be with You Till We Meet Again",
-        },
-        closingPrayer: "Brother Peter Zulu",
-        presiding: "Bishop David Molefe",
-        conducting: "Sister Grace Dube",
-    },
-    {
-        id: "3",
-        date: "2026-05-17",
-        meetingType: {
-            id: "sacrament",
-            name: "Sacrament Meeting",
-        },
-        openingHymn: {
-            number: 26,
-            title: "Joseph Smith's First Prayer",
-        },
-        openingPrayer: "Brother Michael Mokoena",
-        speakers: [
-            {
-                name: "Sister Nomsa Khumalo",
-                topic: "Service and Charity",
-            },
-            {
-                name: "Brother Sipho Dlamini",
-                topic: "The Holy Ghost",
-            },
-        ],
-        closingHymn: {
-            number: 152,
-            title: "God Be with You Till We Meet Again",
-        },
-        closingPrayer: "Sister Emily Maseko",
-        presiding: "Bishop David Molefe",
-        conducting: "Brother Samuel Khumalo",
-    },
-    {
-        id: "4",
-        date: "2026-05-24",
-        meetingType: {
-            id: "sacrament",
-            name: "Sacrament Meeting",
-        },
-        openingHymn: {
-            number: 85,
-            title: "How Firm a Foundation",
-        },
-        openingPrayer: "Brother John Ndlovu",
-        speakers: [
-            {
-                name: "Sister Grace Dube",
-                topic: "Families and the Gospel",
-            },
-            {
-                name: "Brother David Zulu",
-                topic: "Keeping the Sabbath Day Holy",
-            },
-        ],
-        intermediateHymn: {
-            number: 98,
-            title: "I Need Thee Every Hour",
-        },
-        closingHymn: {
-            number: 219,
-            title: "Because I Have Been Given Much",
-        },
-        closingPrayer: "Brother Peter Zulu",
-        presiding: "Bishop David Molefe",
-        conducting: "Sister Grace Dube",
-    },
-    {
-        id: "5",
-        date: "2026-05-31",
-        meetingType: {
-            id: "sacrament",
-            name: "Sacrament Meeting",
-        },
-        openingHymn: {
-            number: 2,
-            title: "The Spirit of God",
-        },
-        openingPrayer: "Sister Ruth Nkosi",
-        speakers: [
-            {
-                name: "Brother Thabo Maseko",
-                topic: "The Atonement of Jesus Christ",
-            },
-            {
-                name: "Sister Sarah Dlamini",
-                topic: "Living the Gospel Daily",
-            },
-        ],
-        intermediateHymn: {
-            number: 85,
-            title: "How Firm a Foundation",
-        },
-        business: [
-            {
-                item: "Ward activities",
-                details: "Upcoming youth and family activities were announced.",
-            },
-        ],
-        closingHymn: {
-            number: 81,
-            title: "Press Forward, Saints",
-        },
-        closingPrayer: "Brother Daniel Mokoena",
-        presiding: "Bishop David Molefe",
-        conducting: "Brother Samuel Khumalo",
-    },
-];
+const sql = neon(process.env.DATABASE_URL!);
 
-export function getMeetingById(id: string): Meeting | undefined {
-    return meetings.find((meeting) => meeting.id === id);
+const ITEMS_PER_PAGE = 5;
+
+function formatMeetingType(value: string): MeetingType {
+    const names: Record<string, string> = {
+        testimony: "Testimony Meeting",
+        regular: "Regular Sacrament Meeting",
+        stake: "Stake Meeting",
+        general: "General Meeting",
+        special: "Special Meeting",
+    };
+
+    return {
+        id: value,
+        name: names[value] ?? value,
+    };
 }
 
-export function getMeetingsByDate(date: string): Meeting[] {
-    return meetings.filter((meeting) => meeting.date === date);
+function mapMeeting(row: {
+    id: number;
+    date: string;
+    meetingType: string;
+    presiding: string;
+    conducting: string;
+    announcements: string[] | null;
+    openingHymn: Meeting["openingHymn"];
+    openingPrayer: string;
+    wardBusiness: Meeting["business"];
+    stakeBusiness: boolean | null;
+    sacramentHymn: Meeting["intermediateHymn"];
+    speakers: Meeting["speakers"];
+    closingHymn: Meeting["closingHymn"];
+    closingPrayer: string;
+}): Meeting {
+    return {
+        id: String(row.id),
+        date: row.date,
+        meetingType: formatMeetingType(row.meetingType),
+        openingHymn: row.openingHymn,
+        openingPrayer: row.openingPrayer,
+        speakers: row.speakers ?? [],
+        intermediateHymn: row.sacramentHymn,
+        business: row.wardBusiness ?? [],
+        announcements: row.announcements ?? [],
+        stakeBusiness: row.stakeBusiness ?? false,
+        closingHymn: row.closingHymn,
+        closingPrayer: row.closingPrayer,
+        presiding: row.presiding,
+        conducting: row.conducting,
+    };
 }
 
-export function getAllMeetings(): Meeting[] {
-    return meetings;
+export async function getMeetings(
+    query: string = "",
+    currentPage: number = 1
+): Promise<Meeting[]> {
+    const searchTerm = `%${query}%`;
+    const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
+    const rows = await sql`
+        SELECT
+            id,
+            to_char(date, 'YYYY-MM-DD') AS date,
+            meeting_type AS "meetingType",
+            presiding,
+            conducting,
+            announcements,
+            opening_hymn AS "openingHymn",
+            opening_prayer AS "openingPrayer",
+            ward_business AS "wardBusiness",
+            stake_business AS "stakeBusiness",
+            sacrament_hymn AS "sacramentHymn",
+            speakers,
+            closing_hymn AS "closingHymn",
+            closing_prayer AS "closingPrayer"
+        FROM meetings
+        WHERE
+            presiding ILIKE ${searchTerm}
+            OR conducting ILIKE ${searchTerm}
+            OR meeting_type ILIKE ${searchTerm}
+            OR speakers::text ILIKE ${searchTerm}
+        ORDER BY date DESC
+        LIMIT ${ITEMS_PER_PAGE}
+        OFFSET ${offset}
+    `;
+
+    return rows.map((row) =>
+        mapMeeting(
+            row as {
+                id: number;
+                date: string;
+                meetingType: string;
+                presiding: string;
+                conducting: string;
+                announcements: string[] | null;
+                openingHymn: Meeting["openingHymn"];
+                openingPrayer: string;
+                wardBusiness: Meeting["business"];
+                stakeBusiness: boolean | null;
+                sacramentHymn: Meeting["intermediateHymn"];
+                speakers: Meeting["speakers"];
+                closingHymn: Meeting["closingHymn"];
+                closingPrayer: string;
+            }
+        )
+    );
+}
+
+export async function getMeetingsTotalPages(
+    query: string = ""
+): Promise<number> {
+    const searchTerm = `%${query}%`;
+
+    const rows = await sql`
+        SELECT COUNT(*) AS count
+        FROM meetings
+        WHERE
+            presiding ILIKE ${searchTerm}
+            OR conducting ILIKE ${searchTerm}
+            OR meeting_type ILIKE ${searchTerm}
+            OR speakers::text ILIKE ${searchTerm}
+    `;
+
+    return Math.ceil(Number(rows[0].count) / ITEMS_PER_PAGE);
+}
+
+export async function getMeetingById(
+    id: string
+): Promise<Meeting | undefined> {
+    const rows = await sql`
+        SELECT
+            id,
+            to_char(date, 'YYYY-MM-DD') AS date,
+            meeting_type AS "meetingType",
+            presiding,
+            conducting,
+            announcements,
+            opening_hymn AS "openingHymn",
+            opening_prayer AS "openingPrayer",
+            ward_business AS "wardBusiness",
+            stake_business AS "stakeBusiness",
+            sacrament_hymn AS "sacramentHymn",
+            speakers,
+            closing_hymn AS "closingHymn",
+            closing_prayer AS "closingPrayer"
+        FROM meetings
+        WHERE id = ${Number(id)}
+    `;
+
+    if (rows.length === 0) {
+        return undefined;
+    }
+
+    return mapMeeting(
+        rows[0] as {
+            id: number;
+            date: string;
+            meetingType: string;
+            presiding: string;
+            conducting: string;
+            announcements: string[] | null;
+            openingHymn: Meeting["openingHymn"];
+            openingPrayer: string;
+            wardBusiness: Meeting["business"];
+            stakeBusiness: boolean | null;
+            sacramentHymn: Meeting["intermediateHymn"];
+            speakers: Meeting["speakers"];
+            closingHymn: Meeting["closingHymn"];
+            closingPrayer: string;
+        }
+    );
+}
+
+export async function getMeetingsByDate(
+    date: string
+): Promise<Meeting[]> {
+    const rows = await sql`
+        SELECT
+            id,
+            to_char(date, 'YYYY-MM-DD') AS date,
+            meeting_type AS "meetingType",
+            presiding,
+            conducting,
+            announcements,
+            opening_hymn AS "openingHymn",
+            opening_prayer AS "openingPrayer",
+            ward_business AS "wardBusiness",
+            stake_business AS "stakeBusiness",
+            sacrament_hymn AS "sacramentHymn",
+            speakers,
+            closing_hymn AS "closingHymn",
+            closing_prayer AS "closingPrayer"
+        FROM meetings
+        WHERE date = ${date}
+        ORDER BY date DESC
+    `;
+
+    return rows.map(
+        (row) =>
+            mapMeeting(
+                row as {
+                    id: number;
+                    date: string;
+                    meetingType: string;
+                    presiding: string;
+                    conducting: string;
+                    announcements: string[] | null;
+                    openingHymn: Meeting["openingHymn"];
+                    openingPrayer: string;
+                    wardBusiness: Meeting["business"];
+                    stakeBusiness: boolean | null;
+                    sacramentHymn: Meeting["intermediateHymn"];
+                    speakers: Meeting["speakers"];
+                    closingHymn: Meeting["closingHymn"];
+                    closingPrayer: string;
+                }
+            )
+    );
+}
+
+export async function getAllMeetings(): Promise<Meeting[]> {
+    const rows = await sql`
+        SELECT
+            id,
+            to_char(date, 'YYYY-MM-DD') AS date,
+            meeting_type AS "meetingType",
+            presiding,
+            conducting,
+            announcements,
+            opening_hymn AS "openingHymn",
+            opening_prayer AS "openingPrayer",
+            ward_business AS "wardBusiness",
+            stake_business AS "stakeBusiness",
+            sacrament_hymn AS "sacramentHymn",
+            speakers,
+            closing_hymn AS "closingHymn",
+            closing_prayer AS "closingPrayer"
+        FROM meetings
+        ORDER BY date DESC
+    `;
+
+    return rows.map(
+        (row) =>
+            mapMeeting(
+                row as {
+                    id: number;
+                    date: string;
+                    meetingType: string;
+                    presiding: string;
+                    conducting: string;
+                    announcements: string[] | null;
+                    openingHymn: Meeting["openingHymn"];
+                    openingPrayer: string;
+                    wardBusiness: Meeting["business"];
+                    stakeBusiness: boolean | null;
+                    sacramentHymn: Meeting["intermediateHymn"];
+                    speakers: Meeting["speakers"];
+                    closingHymn: Meeting["closingHymn"];
+                    closingPrayer: string;
+                }
+            )
+    );
 }
