@@ -27,6 +27,11 @@ export interface Meeting {
     speakers: Speaker[];
     intermediateHymn?: Hymn;
     business?: Business[];
+
+    // W03 database fields
+    announcements?: string[];
+    stakeBusiness?: boolean;
+
     closingHymn: Hymn;
     closingPrayer: string;
     presiding: string;
