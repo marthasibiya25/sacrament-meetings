@@ -1,7 +1,26 @@
-export default function AdminLayout({
+import { auth } from "@/auth"
+import { redirect } from "next/navigation"
+import SignOutButton from "@/app/components/SignOutButton"
+
+export default async function AdminLayout({
     children,
 }: Readonly<{
-    children: React.ReactNode;
+    children: React.ReactNode
 }>) {
-    return <section>{children}</section>;
+    const session = await auth()
+
+    if (!session) {
+        redirect("/login")
+    }
+
+    return (
+        <section>
+            <header>
+                <p>Signed in as {session.user?.name}</p>
+                <SignOutButton />
+            </header>
+
+            {children}
+        </section>
+    )
 }
